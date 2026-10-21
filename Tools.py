@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
 from ddgs import DDGS
-from rich import print
 import json
 
 # from Tools import tool
@@ -37,19 +36,13 @@ def Fetch_page(url: str, emit) -> str:
 # --------------------
 # SEARCH
 # --------------------
-# @tool
-
-search_dupicate_remove = set()
-
-
 def search(query: str, emit) -> list:
     emit("SEARCH", f"Searching for: {query}")
     content = []
-    print("content from search", content)
+    seen_urls = set()
 
     with DDGS() as ddgs:
         for doc in ddgs.text(query, max_results=5, timeout=10):
-            print("doc", doc)
             title = doc["title"]
             url = doc["href"]
             snippet = doc["body"]
@@ -57,48 +50,26 @@ def search(query: str, emit) -> list:
             if any(domain in url for domain in BAD_DOMAINS):
                 emit("SEARCH", f"Skipping blocked domain: {url}")
                 continue
-            if url in search_dupicate_remove:
+            if url in seen_urls:
                 continue
 
             emit("SEARCH", f"Fetching content: {doc['title']}")
-            search_dupicate_remove.add(url)
+            seen_urls.add(url)
             content.append({"url": url, "title": title, "snippet": snippet})
     return content
-
-    # page_text = Fetch_page(url=url, emit=emit)  # ✅ actually use the result
-
-    # if page_text:  # only add if weis ti got content
-    #     content.append(
-    #         {
-    #             "title": doc["title"],
-    #             "href": url,
-    #             "content": page_text,  # ✅ real content included
-    #         }
-    #     )
-
-    emit("SEARCH", f"Returning {len(content)} results with content")
-    return content
-
 
 # --------------------
 # RESEARCH
 # --------------------
-# @tool
-remove_duplicate_url = set()
-
-
 def research(query: str, sources: list, emit) -> str:
     emit("RESEARCH", f"Starting research: {query}")
-
-    # results = search(query, emit)  # ✅ missing line that was causing the crash
-
     research_result = []
+    seen_urls = set()
 
     if not sources:
         emit("RESEARCH", "No sources found.")
         return "No sources for research found."
     total = len(sources)
-    print("total", total)
 
     for message in sources:
         if message["role"] != "tool":
@@ -108,17 +79,15 @@ def research(query: str, sources: list, emit) -> str:
             try:
                 content = json.loads(content)
             except json.JSONDecodeError:
-                print("FAILED JSON:", repr(content[:500]))
                 continue
         result = content["Tool_Result"]
         for i, item in enumerate(result):
             url = item["url"]
-            if not url or url in remove_duplicate_url:
+            if not url or url in seen_urls:
                 emit("RESEARCH", f"Duplicate skipped: {url}")
                 continue
-            remove_duplicate_url.add(url)
+            seen_urls.add(url)
             web_data = Fetch_page(url, emit=emit)
-            # remove_duplicate_url.append(item["url"])
             if not web_data:
                 continue
 
@@ -137,18 +106,3 @@ Content:
 
     emit("RESEARCH", "Research completed")
     return "\n".join(research_result)
-
-    # print("data", data)
-    # content = data["content"]
-    # print("content", content)
-    # urls = content["Tool_Result"]
-    # print("urls", urls)
-    # # print("sources", sources)
-
-    # for item in content["Tool_Result"]:
-    #     url = Fetch_page(item["url"])
-    #     if not url:
-    #         continue
-
-    # title = item["title"]
-    # content = item.get("content", "")  # ✅ content already fetched by search()

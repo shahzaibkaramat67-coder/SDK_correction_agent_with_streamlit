@@ -11,6 +11,9 @@ class Memory:
             {"role": role, "tool_call_id": tool_call_id, "content": content}
         )
 
+    def add_assistant_tool_calls(self, message):
+        self.messages.append(message.model_dump(exclude_none=True))
+
     def used_tool(self, name):
         self.tool_used.append({"name": name})
 

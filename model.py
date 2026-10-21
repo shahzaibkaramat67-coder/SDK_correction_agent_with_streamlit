@@ -1,35 +1,15 @@
-# from google import genai
-
-# from openrouter import OpenRouter
 from openai import OpenAI
-from google.genai import types
-from dotenv import load_dotenv
 from too_schema import get_Tools
-from rich import print
-from memory import Memory
-import os
 
-load_dotenv()
-
-memory = Memory()
-
-# client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-base_url = os.getenv("FREELLMAPI_BASE_URL")
-llm = os.getenv("FREELLMAPI_MODEL")
-API_KEY = os.getenv("FREELLMAPI_API_KEY")
-
-print("BASE URL:", base_url)
-print("MODEL:", llm)
-print("API KEY EXISTS:", bool(API_KEY))
+def create_client(api_key, base_url):
+    return OpenAI(
+        api_key=api_key.strip(),
+        base_url=base_url.strip() or None,
+        timeout=30,
+    )
 
 
-client = OpenAI(base_url=base_url, api_key=API_KEY)
-
-
-def modelfunction(memory):
-    print("WE ARE ENTERED INTO THE MODELFUNCTION")
-
+def modelfunction(memory, client, model_name):
     messages = [
         {
             "role": "system",
@@ -108,10 +88,9 @@ You are an intelligent assistant that can use search and research tools to answe
     ]
 
     messages.extend(memory.get_memory())
-    print("HERE WE ARE GOING TO GET THE OUTPUT")
 
     return client.chat.completions.create(
-        model=llm,
+        model=model_name,
         messages=messages,
         tools=get_Tools(),
     )
